@@ -13,7 +13,7 @@ Glue Gold - yt_pipeline_gold_dev
 --bronze_database yt_pipeline_bronze_dev 
 --bronze_table raw_statistics 
 
---silver_database yt_pipeline_silver_dev 
+--silver_database yt_pipeline_silver_dev
 --silver_table clean_statistics
 
 --gold_database yt_pipeline_gold_dev
