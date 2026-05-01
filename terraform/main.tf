@@ -44,7 +44,7 @@ module "compute" {
   depends_on = [module.networking]
 }
 
-# # Data module — S3 state bucket, DynamoDB locks (for team collaboration)
+# Data module — S3 state bucket, DynamoDB locks (for team collaboration)
 # module "data" {
 #   source = "./modules/data"
 
@@ -54,15 +54,15 @@ module "compute" {
 #   depends_on = [module.networking, module.compute]
 # }
 
-# # Output key values for reference
-# locals {
-#   outputs_summary = {
-#     vpc_id                = module.networking.vpc_id
-#     public_subnet_id      = module.networking.public_subnet_id
-#     sg_ingestion_id       = module.networking.sg_ingestion_id
-#     sg_quality_id         = module.networking.sg_quality_id
-#     lambda_role_arn       = module.compute.lambda_role_arn
-#     terraform_state_bucket = module.data.state_bucket_name
-#     terraform_locks_table = module.data.locks_table_name
-#   }
-# }
+# Output key values for reference
+locals {
+  outputs_summary = {
+    vpc_id                = module.networking.vpc_id
+    public_subnet_id      = module.networking.public_subnet_id
+    sg_ingestion_id       = module.networking.sg_ingestion_id
+    sg_quality_id         = module.networking.sg_quality_id
+    lambda_role_arn       = module.compute.lambda_role_arn
+    # terraform_state_bucket = module.data.state_bucket_name
+    # terraform_locks_table = module.data.locks_table_name
+  }
+}
