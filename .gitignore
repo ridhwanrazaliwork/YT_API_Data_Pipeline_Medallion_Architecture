@@ -1,2 +1,22 @@
 implementation.md
 .github
+
+# Local .terraform directories
+.terraform/
+
+# Terraform state files
+*.tfstate
+*.tfstate.*
+
+# Crash log files
+crash.log
+
+# Exclude override files as they are usually local
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Ignore variable files with sensitive data
+*.tfvars
+*.tfvars.json
