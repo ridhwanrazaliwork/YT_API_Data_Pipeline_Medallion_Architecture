@@ -33,15 +33,15 @@ output "lambda_role_name" {
   value       = module.compute.lambda_role_name
 }
 
-# output "terraform_state_bucket_name" {
-#   description = "Name of S3 bucket for Terraform state"
-#   value       = module.data.state_bucket_name
-# }
+output "terraform_state_bucket_name" {
+  description = "Name of S3 bucket for Terraform state"
+  value       = module.data.state_bucket_name
+}
 
-# output "terraform_locks_table_name" {
-#   description = "Name of DynamoDB table for Terraform locks"
-#   value       = module.data.locks_table_name
-# }
+output "terraform_locks_table_name" {
+  description = "Name of DynamoDB table for Terraform locks"
+  value       = module.data.locks_table_name
+}
 
 output "deployment_summary" {
   description = "Summary of deployment configuration"

@@ -45,14 +45,14 @@ module "compute" {
 }
 
 # Data module — S3 state bucket, DynamoDB locks (for team collaboration)
-# module "data" {
-#   source = "./modules/data"
+module "data" {
+  source = "./modules/data"
 
-#   environment_name = var.environment_name
-#   aws_region       = var.aws_region
+  environment_name = var.environment_name
+  aws_region       = var.aws_region
 
-#   depends_on = [module.networking, module.compute]
-# }
+  depends_on = [module.networking, module.compute]
+}
 
 # Output key values for reference
 locals {
@@ -62,7 +62,7 @@ locals {
     sg_ingestion_id       = module.networking.sg_ingestion_id
     sg_quality_id         = module.networking.sg_quality_id
     lambda_role_arn       = module.compute.lambda_role_arn
-    # terraform_state_bucket = module.data.state_bucket_name
-    # terraform_locks_table = module.data.locks_table_name
+    terraform_state_bucket = module.data.state_bucket_name
+    terraform_locks_table = module.data.locks_table_name
   }
 }

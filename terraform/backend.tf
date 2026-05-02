@@ -16,10 +16,10 @@
 
 terraform {
   backend "s3" {
-    bucket         = "yt-pipeline-terraform-state-ap-southeast-1"
+    bucket         = "yt-pipeline-terraform-state-ap-southeast-1-v2"
     key            = "youtube-pipeline/terraform.tfstate"
     region         = "ap-southeast-1"
     encrypt        = true
-    dynamodb_table = "terraform-locks"
+    dynamodb_table = "terraform-locks-v2"
   }
 }

@@ -201,18 +201,72 @@ resource "aws_iam_role_policy" "glue_s3_access" {
           "s3:DeleteObject"
         ]
         Resource = [
-          "arn:aws:s3:::rid-yt-pipeline-bronze-${var.aws_region}-${var.environment_name}",
-          "arn:aws:s3:::rid-yt-pipeline-bronze-${var.aws_region}-${var.environment_name}/*",
-          "arn:aws:s3:::rid-yt-pipeline-silver-${var.aws_region}-${var.environment_name}",
-          "arn:aws:s3:::rid-yt-pipeline-silver-${var.aws_region}-${var.environment_name}/*",
-          "arn:aws:s3:::rid-yt-pipeline-gold-${var.aws_region}-${var.environment_name}",
-          "arn:aws:s3:::rid-yt-pipeline-gold-${var.aws_region}-${var.environment_name}/*",
-          "arn:aws:s3:::rid-yt-pipeline-script-${var.aws_region}-${var.environment_name}",
-          "arn:aws:s3:::rid-yt-pipeline-script-${var.aws_region}-${var.environment_name}/*"
+          "arn:aws:s3:::rid-yt-pipeline-bronze-${var.aws_region}-${var.environment_name}-v2",
+          "arn:aws:s3:::rid-yt-pipeline-bronze-${var.aws_region}-${var.environment_name}-v2/*",
+          "arn:aws:s3:::rid-yt-pipeline-silver-${var.aws_region}-${var.environment_name}-v2",
+          "arn:aws:s3:::rid-yt-pipeline-silver-${var.aws_region}-${var.environment_name}-v2/*",
+          "arn:aws:s3:::rid-yt-pipeline-gold-${var.aws_region}-${var.environment_name}-v2",
+          "arn:aws:s3:::rid-yt-pipeline-gold-${var.aws_region}-${var.environment_name}-v2/*",
+          "arn:aws:s3:::rid-yt-pipeline-script-${var.aws_region}-${var.environment_name}-v2",
+          "arn:aws:s3:::rid-yt-pipeline-script-${var.aws_region}-${var.environment_name}-v2/*",
+          "arn:aws:s3:::rid-yt-data-pipeline-glue-athena-query-result-v2",
+          "arn:aws:s3:::rid-yt-data-pipeline-glue-athena-query-result-v2/*"
         ]
       }
     ]
   })
+}
+
+# ────────────────────────────────────────────────────────────────────────────
+# Glue Jobs
+# ────────────────────────────────────────────────────────────────────────────
+
+resource "aws_glue_job" "bronze_to_silver" {
+  name     = "${var.environment_name}-yt-data-pipeline-bronze-to-silver"
+  role_arn = aws_iam_role.glue_execution.arn
+
+  command {
+    name            = "glueetl"
+    script_location = "s3://rid-yt-pipeline-script-${var.aws_region}-${var.environment_name}-v2/bronze_to_silver_statistics.py"
+    python_version  = "3"
+  }
+
+  default_arguments = {
+    "--job-bookmark-option" = "job-bookmark-enable"
+    "--enable-metrics"      = "true"
+    "--enable-glue-datacatalog" = "true"
+  }
+
+  max_retries = 0
+  timeout     = 60
+
+  tags = {
+    Name = "${var.environment_name}-bronze-to-silver"
+  }
+}
+
+resource "aws_glue_job" "silver_to_gold" {
+  name     = "${var.environment_name}-yt-data-pipeline-silver-to-gold"
+  role_arn = aws_iam_role.glue_execution.arn
+
+  command {
+    name            = "glueetl"
+    script_location = "s3://rid-yt-pipeline-script-${var.aws_region}-${var.environment_name}-v2/silver_to_gold_statistics.py"
+    python_version  = "3"
+  }
+
+  default_arguments = {
+    "--job-bookmark-option" = "job-bookmark-enable"
+    "--enable-metrics"      = "true"
+    "--enable-glue-datacatalog" = "true"
+  }
+
+  max_retries = 0
+  timeout     = 60
+
+  tags = {
+    Name = "${var.environment_name}-silver-to-gold"
+  }
 }
 
 # ────────────────────────────────────────────────────────────────────────────
