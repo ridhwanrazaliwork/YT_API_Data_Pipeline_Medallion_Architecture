@@ -6,7 +6,7 @@
       "Type": "Task",
       "Resource": "arn:aws:states:::lambda:invoke",
       "Parameters": {
-        "FunctionName": "arn:aws:lambda:${aws_region}:${account_id}:function:${environment}-yt-ingestion:$LATEST",
+        "FunctionName": "arn:aws:lambda:ap-southeast-1:905418370529:function:dev-yt-ingestion:$LATEST",
         "Payload": {
           "triggered_by": "step_functions",
           "execution_id.$": "$$.Execution.Id"
@@ -37,7 +37,7 @@
     },
     "WaitForS3Consistency": {
       "Type": "Wait",
-      "Seconds": 10,
+      "Seconds": 60,
       "Comment": "Brief wait to ensure S3 eventual consistency for newly written objects",
       "Next": "ProcessInParallel"
     },
@@ -52,7 +52,7 @@
               "Type": "Task",
               "Resource": "arn:aws:states:::lambda:invoke",
               "Parameters": {
-                "FunctionName": "arn:aws:lambda:${aws_region}:${account_id}:function:${environment}-yt-transform:$LATEST",
+                "FunctionName": "arn:aws:lambda:ap-southeast-1:905418370529:function:dev-yt-transform:$LATEST",
                 "Payload": {
                   "triggered_by": "step_functions"
                 }
@@ -63,7 +63,7 @@
                   "ErrorEquals": [
                     "States.ALL"
                   ],
-                  "IntervalSeconds": 15,
+                  "IntervalSeconds": 60,
                   "MaxAttempts": 2,
                   "BackoffRate": 2
                 }
@@ -79,12 +79,12 @@
               "Type": "Task",
               "Resource": "arn:aws:states:::glue:startJobRun.sync",
               "Parameters": {
-                "JobName": "yt-data-pipeline-bronze-to-silver-dev",
+                "JobName": "dev-yt-data-pipeline-bronze-to-silver",
                 "Arguments": {
-                  "--bronze_database": "yt_pipeline_bronze_dev",
+                  "--bronze_database": "yt_pipeline_bronze_dev-v2",
                   "--bronze_table": "raw_statistics",
-                  "--silver_bucket": "rid-yt-pipeline-silver-ap-southeast-1-dev",
-                  "--silver_database": "yt_pipeline_silver_dev",
+                  "--silver_bucket": "rid-yt-pipeline-silver-ap-southeast-1-dev-v2",
+                  "--silver_database": "yt_pipeline_silver_dev-v2",
                   "--silver_table": "clean_statistics"
                 }
               },
@@ -120,10 +120,10 @@
       "Type": "Task",
       "Resource": "arn:aws:states:::lambda:invoke",
       "Parameters": {
-        "FunctionName": "arn:aws:lambda:${aws_region}:${account_id}:function:${environment}-yt-quality:$LATEST",
+        "FunctionName": "arn:aws:lambda:ap-southeast-1:905418370529:function:dev-yt-quality:$LATEST",
         "Payload": {
           "layer": "silver",
-          "database": "yt_pipeline_silver_dev",
+          "database": "yt_pipeline_silver_dev-v2",
           "tables": [
             "clean_statistics",
             "clean_reference_data"
@@ -136,7 +136,7 @@
           "ErrorEquals": [
             "States.ALL"
           ],
-          "IntervalSeconds": 15,
+          "IntervalSeconds": 60,
           "MaxAttempts": 2,
           "BackoffRate": 2
         }
@@ -158,11 +158,11 @@
       "Type": "Task",
       "Resource": "arn:aws:states:::glue:startJobRun.sync",
       "Parameters": {
-        "JobName": "yt-data-pipeline-silver-to-gold-dev",
+        "JobName": "dev-yt-data-pipeline-silver-to-gold",
         "Arguments": {
-          "--silver_database": "yt_pipeline_silver_dev",
-          "--gold_bucket": "rid-yt-pipeline-gold-ap-southeast-1-dev",
-          "--gold_database": "yt_pipeline_gold_dev"
+          "--silver_database": "yt_pipeline_silver_dev-v2",
+          "--gold_bucket": "rid-yt-pipeline-gold-ap-southeast-1-dev-v2",
+          "--gold_database": "yt_pipeline_gold_dev-v2"
         }
       },
       "ResultPath": "$.glue_gold_result",
@@ -191,7 +191,7 @@
       "Type": "Task",
       "Resource": "arn:aws:states:::sns:publish",
       "Parameters": {
-        "TopicArn": "arn:aws:sns:${aws_region}:${account_id}:yt-data-pipeline-alerts-${environment}",
+        "TopicArn": "arn:aws:sns:ap-southeast-1:905418370529:yt-data-pipeline-alerts-dev-v2",
         "Subject": "[YT Pipeline] Pipeline completed successfully",
         "Message": {
           "status": "SUCCESS",
@@ -205,7 +205,7 @@
       "Type": "Task",
       "Resource": "arn:aws:states:::sns:publish",
       "Parameters": {
-        "TopicArn": "arn:aws:sns:${aws_region}:${account_id}:yt-data-pipeline-alerts-${environment}",
+        "TopicArn": "arn:aws:sns:ap-southeast-1:905418370529:yt-data-pipeline-alerts-dev-v2",
         "Subject": "[YT Pipeline] FAILURE — Ingestion step failed",
         "Message": {
           "status": "FAILURE",
@@ -221,7 +221,7 @@
       "Type": "Task",
       "Resource": "arn:aws:states:::sns:publish",
       "Parameters": {
-        "TopicArn": "arn:aws:sns:${aws_region}:${account_id}:yt-data-pipeline-alerts-${environment}",
+        "TopicArn": "arn:aws:sns:ap-southeast-1:905418370529:yt-data-pipeline-alerts-dev-v2",
         "Subject": "[YT Pipeline] FAILURE — Transform step failed",
         "Message": {
           "status": "FAILURE",
@@ -236,7 +236,7 @@
       "Type": "Task",
       "Resource": "arn:aws:states:::sns:publish",
       "Parameters": {
-        "TopicArn": "arn:aws:sns:${aws_region}:${account_id}:yt-data-pipeline-alerts-${environment}",
+        "TopicArn": "arn:aws:sns:ap-southeast-1:905418370529:yt-data-pipeline-alerts-dev-v2",
         "Subject": "[YT Pipeline] WARNING — Data quality checks failed",
         "Message": {
           "status": "FAILURE",
@@ -252,7 +252,7 @@
       "Type": "Task",
       "Resource": "arn:aws:states:::sns:publish",
       "Parameters": {
-        "TopicArn": "arn:aws:sns:${aws_region}:${account_id}:yt-data-pipeline-alerts-${environment}",
+        "TopicArn": "arn:aws:sns:ap-southeast-1:905418370529:yt-data-pipeline-alerts-dev-v2",
         "Subject": "[YT Pipeline] FAILURE — Gold aggregation failed",
         "Message": {
           "status": "FAILURE",

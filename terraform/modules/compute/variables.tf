@@ -31,11 +31,17 @@ variable "sg_quality_id" {
 variable "lambda_timeout_seconds" {
   description = "Lambda function timeout"
   type        = number
-  default     = 60
+  default     = 240
 }
 
 variable "lambda_memory_mb" {
   description = "Lambda function memory"
   type        = number
-  default     = 256
+  default     = 512
+}
+
+variable "lambda_ephemeral_mb" {
+  description = "Ephemeral /tmp storage for Lambda (MB). Valid range: 512 - 10240"
+  type        = number
+  default     = 1024
 }

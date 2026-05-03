@@ -44,12 +44,13 @@ module "compute" {
   depends_on = [module.networking]
 }
 
-# Data module — S3 state bucket, DynamoDB locks (for team collaboration)
+# Data module — S3 state bucket, DynamoDB locks, Glue databases/tables
 module "data" {
   source = "./modules/data"
 
-  environment_name = var.environment_name
-  aws_region       = var.aws_region
+  environment_name     = var.environment_name
+  aws_region           = var.aws_region
+  transform_lambda_arn = module.compute.transform_lambda_arn
 
   depends_on = [module.networking, module.compute]
 }

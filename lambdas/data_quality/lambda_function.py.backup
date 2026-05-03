@@ -36,7 +36,7 @@ MIN_ROW_COUNT = int(os.environ.get("DQ_MIN_ROW_COUNT", "10"))
 MAX_NULL_PCT = float(os.environ.get("DQ_MAX_NULL_PERCENT", "5.0"))
 MAX_VIEWS = 50_000_000_000  # 50B — sanity check for view counts
 FRESHNESS_HOURS = 48  # Data should be no older than this
-S3_OUTPUT = os.environ.get("S3_OUTPUT", "s3://rid-yt-data-pipeline-glue-athena-query-result-v2/athena-results/")
+S3_OUTPUT = os.environ.get("ATHENA_S3_OUTPUT", "s3://rid-yt-data-pipeline-glue-athena-query-result/athena-results/")
 WORKGROUP = os.environ.get("ATHENA_WORKGROUP", "primary")
 
 

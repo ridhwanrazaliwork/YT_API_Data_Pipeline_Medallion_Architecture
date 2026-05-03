@@ -32,20 +32,9 @@ logger.setLevel(logging.INFO)
 # ── AWS Clients ──────────────────────────────────────────────────────────────
 s3_client = boto3.client("s3")
 sns_client = boto3.client("sns")
-secretsmanager_client = boto3.client("secretsmanager")
 
 # ── Config ───────────────────────────────────────────────────────────────────
-# Retrieve YouTube API key from AWS Secrets Manager
-YOUTUBE_API_KEY_SECRET_ARN = os.environ["YOUTUBE_API_KEY_SECRET"]
-try:
-    secret_response = secretsmanager_client.get_secret_value(SecretId=YOUTUBE_API_KEY_SECRET_ARN)
-    secret_json = json.loads(secret_response.get("SecretString", ""))
-    API_KEY = secret_json.get("youtube_api_key", "")
-    if not API_KEY:
-        raise ValueError("YouTube API key secret is empty")
-except Exception as e:
-    logger.error(f"Failed to retrieve YouTube API key from Secrets Manager: {e}")
-    raise
+API_KEY = os.environ["YOUTUBE_API_KEY"]
 BUCKET = os.environ["S3_BUCKET_BRONZE"]
 REGIONS = os.environ.get("YOUTUBE_REGIONS", "US,GB,CA,DE,FR,IN,JP,KR,MX,RU").split(",")
 SNS_TOPIC = os.environ.get("SNS_ALERT_TOPIC_ARN", "")
@@ -89,16 +78,6 @@ def fetch_video_categories(region_code: str) -> dict:
         return json.loads(resp.read().decode("utf-8"))
 
 
-def log_http_error(prefix: str, error: HTTPError) -> None:
-    """Log the HTTP status and response body returned by YouTube."""
-    try:
-        error_body = error.read().decode("utf-8")
-    except Exception:
-        error_body = "<unable to read error body>"
-
-    logger.error(f"{prefix}: {error} | response body: {error_body}")
-
-
 def write_to_s3(data: dict, bucket: str, key: str) -> dict:
     """Write JSON data to S3 with metadata."""
     body = json.dumps(data, ensure_ascii=False, indent=2)
@@ -138,7 +117,7 @@ def lambda_handler(event, context):
     results = {"success": [], "failed": []}
 
     for region in REGIONS:
-        region = region.strip()
+        region = region.strip().lower()
         logger.info(f"Processing region: {region}")
 
         # ── Fetch trending videos ────────────────────────────────────────
@@ -167,12 +146,8 @@ def lambda_handler(event, context):
             write_to_s3(trending_data, BUCKET, s3_key)
             logger.info(f"  Wrote {video_count} videos → s3://{BUCKET}/{s3_key}")
 
-        except HTTPError as e:
-            log_http_error(f"  API error for {region} trending", e)
-            results["failed"].append({"region": region, "type": "trending", "error": str(e)})
-            continue
-        except URLError as e:
-            logger.error(f"  Network error for {region} trending: {e}")
+        except (HTTPError, URLError) as e:
+            logger.error(f"  API error for {region} trending: {e}")
             results["failed"].append({"region": region, "type": "trending", "error": str(e)})
             continue
         except Exception as e:
@@ -199,12 +174,8 @@ def lambda_handler(event, context):
             write_to_s3(category_data, BUCKET, ref_key)
             logger.info(f"  Wrote categories → s3://{BUCKET}/{ref_key}")
 
-        except HTTPError as e:
-            log_http_error(f"  API error for {region} categories", e)
-            results["failed"].append({"region": region, "type": "categories", "error": str(e)})
-            continue
-        except URLError as e:
-            logger.error(f"  Network error for {region} categories: {e}")
+        except (HTTPError, URLError) as e:
+            logger.error(f"  API error for {region} categories: {e}")
             results["failed"].append({"region": region, "type": "categories", "error": str(e)})
             continue
 
@@ -229,4 +200,3 @@ def lambda_handler(event, context):
         "ingestion_id": ingestion_id,
         "results": results,
     }
-
