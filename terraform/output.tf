@@ -46,11 +46,11 @@ output "terraform_locks_table_name" {
 output "deployment_summary" {
   description = "Summary of deployment configuration"
   value = {
-    environment     = var.environment_name
-    region          = var.aws_region
-    vpc_cidr        = var.vpc_cidr
-    public_subnet   = var.public_subnet_cidr
-    lambda_memory   = var.lambda_memory_mb
-    lambda_timeout  = var.lambda_timeout_seconds
+    environment    = var.environment_name
+    region         = var.aws_region
+    vpc_cidr       = var.vpc_cidr
+    public_subnet  = var.public_subnet_cidr
+    lambda_memory  = var.lambda_memory_mb
+    lambda_timeout = var.lambda_timeout_seconds
   }
 }

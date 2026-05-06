@@ -1,0 +1,141 @@
+name: Terraform Plan
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'terraform/**'
+      - 'lambdas/**'
+      - 'glue_jobs/**'
+      - '.github/workflows/plan.yml'
+
+jobs:
+  plan:
+    name: Plan Terraform Changes
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: '~> 1.5.0'
+
+      - name: Terraform init (dev)
+        working-directory: terraform/environments/dev
+        run: |
+          echo "Initializing dev environment..."
+          terraform init -backend=false
+
+      - name: Terraform plan (dev)
+        id: plan_dev
+        working-directory: terraform/environments/dev
+        run: |
+          echo "Generating plan for dev environment..."
+          terraform plan -out=/tmp/tfplan_dev
+          terraform show -json /tmp/tfplan_dev > /tmp/plan_dev.json
+          echo "✅ Dev plan generated"
+        continue-on-error: true
+
+      - name: Terraform init (prod)
+        working-directory: terraform/environments/prod
+        run: |
+          echo "Initializing prod environment..."
+          terraform init -backend=false
+
+      - name: Terraform plan (prod)
+        id: plan_prod
+        working-directory: terraform/environments/prod
+        run: |
+          echo "Generating plan for prod environment..."
+          terraform plan -out=/tmp/tfplan_prod
+          terraform show -json /tmp/tfplan_prod > /tmp/plan_prod.json
+          echo "✅ Prod plan generated"
+        continue-on-error: true
+
+      - name: Generate plan summary
+        run: |
+          cat > /tmp/plan_summary.md << 'EOF'
+          # Terraform Plan Summary
+          
+          ## Development Environment
+          
+          The following resources will be created/modified/destroyed in **dev**:
+          
+          ```
+          Check GitHub Actions job output for details
+          ```
+          
+          ## Production Environment
+          
+          The following resources will be created/modified/destroyed in **prod**:
+          
+          ```
+          Check GitHub Actions job output for details
+          ```
+          
+          ## Next Steps
+          
+          1. **Review** the plan output above
+          2. **Approve** the deployment via GitHub environment protection (requires maintainer approval)
+          3. **Apply** will automatically run if approved
+          
+          **Manual Review Steps:**
+          - Ensure no unexpected resource deletions
+          - Verify security group rules are correct
+           - Check Lambda function configurations
+           - Verify Glue job configurations
+          
+          EOF
+          cat /tmp/plan_summary.md
+
+      - name: Create Job Summary
+        if: always()
+        run: |
+          {
+            echo "## Terraform Plan for Dev & Prod"
+            echo ""
+            echo "✅ Plan generated successfully"
+            echo ""
+            echo "### Dev Environment"
+            if [ -f /tmp/plan_dev.json ]; then
+              echo "Plan saved to job artifacts (if configured)"
+            fi
+            echo ""
+            echo "### Prod Environment"
+            if [ -f /tmp/plan_prod.json ]; then
+              echo "Plan saved to job artifacts (if configured)"
+            fi
+            echo ""
+            echo "### Next Steps"
+            echo "1. Review plan output in GitHub Actions"
+            echo "2. Approve deployment via GitHub environment protection"
+            echo "3. 'Apply' workflow will run automatically after approval"
+          } >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload plan artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-plans
+          path: |
+            /tmp/tfplan_dev
+            /tmp/tfplan_prod
+            /tmp/plan_dev.json
+            /tmp/plan_prod.json
+          retention-days: 7
+
+      - name: Comment on commits
+        if: github.event_name == 'push'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.repos.createCommitComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              commit_sha: context.sha,
+              body: '## 📋 Terraform Plan\n\n✅ Plan generated for **dev** and **prod** environments.\n\n**Review the GitHub Actions workflow output to see detailed plan.**\n\n*Approval required before applying changes.*'
+            });

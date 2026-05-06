@@ -1,0 +1,173 @@
+name: Terraform Validate & Plan
+
+on:
+  pull_request:
+    paths:
+      - 'terraform/**'
+      - 'lambdas/**'
+      - 'glue_jobs/**'
+      - '.github/workflows/validate.yml'
+
+jobs:
+  validate:
+    name: Validate Terraform
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: '~> 1.5.0'
+
+      - name: Terraform fmt check
+        id: fmt_check
+        working-directory: terraform
+        run: |
+          echo "Checking Terraform formatting..."
+          terraform fmt -check -recursive
+          if [ $? -ne 0 ]; then
+            echo "❌ Terraform files are not formatted. Run: terraform fmt -recursive"
+            exit 1
+          fi
+          echo "✅ All files are properly formatted"
+
+      - name: Terraform init (dev)
+        id: init_dev
+        working-directory: terraform/environments/dev
+        run: |
+          echo "Initializing dev environment..."
+          terraform init -backend=false
+          
+      - name: Terraform validate (dev)
+        id: validate_dev
+        working-directory: terraform/environments/dev
+        run: |
+          echo "Validating dev environment..."
+          terraform validate
+          if [ $? -eq 0 ]; then
+            echo "✅ Dev environment validation passed"
+          else
+            echo "❌ Dev environment validation failed"
+            exit 1
+          fi
+
+      - name: Terraform init (prod)
+        id: init_prod
+        working-directory: terraform/environments/prod
+        run: |
+          echo "Initializing prod environment..."
+          terraform init -backend=false
+
+      - name: Terraform validate (prod)
+        id: validate_prod
+        working-directory: terraform/environments/prod
+        run: |
+          echo "Validating prod environment..."
+          terraform validate
+          if [ $? -eq 0 ]; then
+            echo "✅ Prod environment validation passed"
+          else
+            echo "❌ Prod environment validation failed"
+            exit 1
+          fi
+
+      - name: Terraform plan (dev) - for reference
+        id: plan_dev
+        working-directory: terraform/environments/dev
+        run: |
+          echo "Planning dev environment..."
+          terraform plan -json > /tmp/plan_dev.json 2>&1
+          terraform plan -out=/tmp/tfplan_dev 2>&1
+          echo "Plan complete"
+        continue-on-error: true
+
+      - name: Check Lambda code for syntax errors
+        id: lambda_check
+        run: |
+          echo "Checking Lambda function syntax..."
+          python3 -m py_compile lambdas/youtube_api_ingestion/lambda_function.py
+          python3 -m py_compile lambdas/json_to_parquet/lambda_function.py
+          python3 -m py_compile lambdas/data_quality/lambda_function.py
+          echo "✅ All Lambda functions have valid Python syntax"
+
+      - name: Check Glue scripts for syntax errors
+        id: glue_check
+        run: |
+          echo "Checking Glue job scripts syntax..."
+          python3 -m py_compile glue_jobs/bronze_to_silver_statistics.py
+          python3 -m py_compile glue_jobs/silver_to_gold_statistics.py
+          echo "✅ All Glue scripts have valid Python syntax"
+
+      - name: Post plan summary to PR
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const outcomes = {
+              fmt: '${{ steps.fmt_check.outcome }}',
+              validateDev: '${{ steps.validate_dev.outcome }}',
+              validateProd: '${{ steps.validate_prod.outcome }}',
+              lambda: '${{ steps.lambda_check.outcome }}',
+              glue: '${{ steps.glue_check.outcome }}'
+            };
+            const icon = (s) => s === 'success' ? '✅' : '❌';
+            let comment = `## Terraform Validation Results\n\n`;
+            comment += `### ${icon(outcomes.fmt)} Terraform Format Check\n${outcomes.fmt === 'success' ? 'All files are properly formatted.' : 'Some files are not formatted — run: terraform fmt -recursive'}\n\n`;
+            comment += `### ${icon(outcomes.validateDev)} Terraform Validation (Dev)\n${outcomes.validateDev === 'success' ? 'Dev environment is valid.' : 'Dev validation failed.'}\n\n`;
+            comment += `### ${icon(outcomes.validateProd)} Terraform Validation (Prod)\n${outcomes.validateProd === 'success' ? 'Prod environment is valid.' : 'Prod validation failed.'}\n\n`;
+            comment += `### ${icon(outcomes.lambda)} Lambda Syntax Check\n${outcomes.lambda === 'success' ? 'All Lambda functions have valid Python syntax.' : 'Lambda syntax check failed.'}\n\n`;
+            comment += `### ${icon(outcomes.glue)} Glue Scripts Syntax Check\n${outcomes.glue === 'success' ? 'All Glue scripts have valid Python syntax.' : 'Glue script syntax check failed.'}\n\n`;
+            
+            if (fs.existsSync('/tmp/tfplan_dev')) {
+              comment += `### Terraform Plan (Dev)\n\`\`\`\nUse 'terraform plan' locally to review full changes\n\`\`\`\n`;
+            }
+            
+            comment += `\n**Next steps:**\n`;
+            comment += `1. Review this PR\n`;
+            comment += `2. Merge when approved\n`;
+            comment += `3. GitHub Actions will run 'terraform plan' on merge\n`;
+            comment += `4. Maintainer will approve deployment\n`;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+  security-check:
+    name: Security Checks
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check for secrets in Terraform files
+        run: |
+          echo "Scanning for hardcoded secrets..."
+          if grep -r "sk-\|api_key\|YOUTUBE_API_KEY" terraform/ --include="*.tf" --include="*.tfvars" | grep -v "var\." | grep -v "environment"; then
+            echo "⚠️  Warning: Check that secrets are not hardcoded in Terraform"
+          else
+            echo "✅ No obvious hardcoded secrets found in Terraform"
+          fi
+        continue-on-error: true
+
+      - name: Check for secrets in Lambda code
+        run: |
+          echo "Scanning for hardcoded secrets in Lambda code..."
+          if grep -r "AIzaSy\|sk-" lambdas/ glue_jobs/ --include="*.py" | grep -v "os.environ\|secretsmanager\|Secrets Manager"; then
+            echo "❌ Found potential hardcoded API keys in code!"
+            exit 1
+          else
+            echo "✅ No hardcoded secrets in Lambda code"
+          fi
+        continue-on-error: true

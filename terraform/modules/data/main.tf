@@ -110,9 +110,9 @@ resource "aws_s3_bucket_public_access_block" "terraform_state" {
 # (which could corrupt state)
 
 resource "aws_dynamodb_table" "terraform_locks" {
-  name           = "terraform-locks-v2"
-  billing_mode   = "PAY_PER_REQUEST"
-  hash_key       = "LockID"
+  name         = "terraform-locks-v2"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "LockID"
 
   attribute {
     name = "LockID"
@@ -131,9 +131,9 @@ resource "aws_dynamodb_table" "terraform_locks" {
 ## Glue Database: Bronze Layer
 # Contains raw data tables as they are ingested from external sources.
 resource "aws_glue_catalog_database" "bronze" {
-  name            = "yt_pipeline_bronze_${var.environment_name}-v2"
-  description     = "Bronze layer - raw data from YouTube API"
-  catalog_id      = data.aws_caller_identity.current.account_id
+  name        = "yt_pipeline_bronze_${var.environment_name}-v2"
+  description = "Bronze layer - raw data from YouTube API"
+  catalog_id  = data.aws_caller_identity.current.account_id
 
   tags = {
     Name = "bronze-db-${var.environment_name}"
@@ -143,9 +143,9 @@ resource "aws_glue_catalog_database" "bronze" {
 ## Glue Database: Silver Layer
 # Contains cleaned, deduplicated, and validated data.
 resource "aws_glue_catalog_database" "silver" {
-  name            = "yt_pipeline_silver_${var.environment_name}-v2"
-  description     = "Silver layer - cleaned and validated data"
-  catalog_id      = data.aws_caller_identity.current.account_id
+  name        = "yt_pipeline_silver_${var.environment_name}-v2"
+  description = "Silver layer - cleaned and validated data"
+  catalog_id  = data.aws_caller_identity.current.account_id
 
   tags = {
     Name = "silver-db-${var.environment_name}"
@@ -155,9 +155,9 @@ resource "aws_glue_catalog_database" "silver" {
 ## Glue Database: Gold Layer
 # Contains aggregated, business-ready data for analytics.
 resource "aws_glue_catalog_database" "gold" {
-  name            = "yt_pipeline_gold_${var.environment_name}-v2"
-  description     = "Gold layer - aggregated analytics data"
-  catalog_id      = data.aws_caller_identity.current.account_id
+  name        = "yt_pipeline_gold_${var.environment_name}-v2"
+  description = "Gold layer - aggregated analytics data"
+  catalog_id  = data.aws_caller_identity.current.account_id
 
   tags = {
     Name = "gold-db-${var.environment_name}"
@@ -290,7 +290,7 @@ resource "aws_glue_catalog_table" "bronze_reference_data" {
       type = "array<struct<kind:string,etag:string,id:string,snippet:struct<channelId:string,title:string,assignable:boolean>>>"
     }
   }
-    partition_keys {
+  partition_keys {
     name = "region"
     type = "string"
   }
@@ -369,43 +369,43 @@ resource "aws_glue_catalog_table" "silver_clean_statistics" {
     columns {
       name = "thumbnail_link"
       type = "string"
-  }
-  columns {
-    name = "comments_disabled"
-    type = "boolean"
-  }
-  columns{
-    name = "ratings_disabled"
-    type = "boolean"
-  }
-  columns {
-    name = "video_error_or_removed"
-    type = "boolean"
-  }
-  columns {
-    name = "description"
-    type = "string"
-  }
-  columns {
-    name = "trending_date_parsed"
-    type= "date"
-  }
-  columns {
-    name = "like_ratio"
-    type = "double"
-  }
-  columns {
-    name = "engagement_rate"
-    type = "double"
-  }
-  columns {
-    name = "_processed_at"
-    type = "timestamp"
-  }
-  columns {
-    name = "_job_name"
-    type = "string"
-  }
+    }
+    columns {
+      name = "comments_disabled"
+      type = "boolean"
+    }
+    columns {
+      name = "ratings_disabled"
+      type = "boolean"
+    }
+    columns {
+      name = "video_error_or_removed"
+      type = "boolean"
+    }
+    columns {
+      name = "description"
+      type = "string"
+    }
+    columns {
+      name = "trending_date_parsed"
+      type = "date"
+    }
+    columns {
+      name = "like_ratio"
+      type = "double"
+    }
+    columns {
+      name = "engagement_rate"
+      type = "double"
+    }
+    columns {
+      name = "_processed_at"
+      type = "timestamp"
+    }
+    columns {
+      name = "_job_name"
+      type = "string"
+    }
   }
 
   partition_keys {
@@ -440,38 +440,38 @@ resource "aws_glue_catalog_table" "silver_reference_data" {
       serialization_library = "org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe"
     }
 
-  columns {
-    name = "kind"
-    type = "string"
-  }
-  columns{
-    name = "etag"
-    type = "string"
-  }
-  columns {
-    name = "id"
-    type = "string"
-  }
-  columns {
-    name = "snippet_title"
-    type = "string"
-  }
-  columns {
-    name = "snippet_assignable"
-    type = "boolean"
-  }
-  columns {
-    name = "snippet_channelid"
-    type = "string"
-  }
-  columns {
-    name = "_ingestion_timestamp"
-    type = "string"
-  }
-  columns {
-    name = "_source_file"
-    type = "string"
-  }
+    columns {
+      name = "kind"
+      type = "string"
+    }
+    columns {
+      name = "etag"
+      type = "string"
+    }
+    columns {
+      name = "id"
+      type = "string"
+    }
+    columns {
+      name = "snippet_title"
+      type = "string"
+    }
+    columns {
+      name = "snippet_assignable"
+      type = "boolean"
+    }
+    columns {
+      name = "snippet_channelid"
+      type = "string"
+    }
+    columns {
+      name = "_ingestion_timestamp"
+      type = "string"
+    }
+    columns {
+      name = "_source_file"
+      type = "string"
+    }
   }
 
   partition_keys {
@@ -722,7 +722,7 @@ resource "aws_glue_catalog_table" "gold_trending_analytics" {
     columns {
       name = "_aggregated_at"
       type = "timestamp"
-  }
+    }
   }
 
   partition_keys {
@@ -769,8 +769,8 @@ data "aws_caller_identity" "current" {}
 # ────────────────────────────────────────────────────────────────────────────
 
 locals {
-  all_regions  = ["ca", "de", "fr", "gb", "in", "jp", "kr", "mx", "ru", "us"]
-  gold_regions = ["ca", "gb", "in", "us"]
+  all_regions   = ["ca", "de", "fr", "gb", "in", "jp", "kr", "mx", "ru", "us"]
+  gold_regions  = ["ca", "gb", "in", "us"]
   bronze_bucket = "rid-yt-pipeline-bronze-${var.aws_region}-${var.environment_name}-v2"
   silver_bucket = "rid-yt-pipeline-silver-${var.aws_region}-${var.environment_name}-v2"
   gold_bucket   = "rid-yt-pipeline-gold-${var.aws_region}-${var.environment_name}-v2"
