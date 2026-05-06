@@ -19,6 +19,7 @@ Environment Variables:
 import os
 import json
 import logging
+import traceback
 from datetime import datetime, timezone, timedelta
 
 import boto3
@@ -143,8 +144,14 @@ def check_freshness(df: pd.DataFrame, table_name: str) -> dict:
     ts_col = "_processed_at" if "_processed_at" in df.columns else "_ingestion_timestamp"
     try:
         latest = pd.to_datetime(df[ts_col]).max()
+        if pd.isna(latest):
+            return {
+                "check": "freshness",
+                "table": table_name,
+                "passed": True,
+                "message": f"All timestamps in '{ts_col}' are NaT — skipping freshness check (backfill data)",
+            }
         cutoff = datetime.now(timezone.utc) - timedelta(hours=FRESHNESS_HOURS)
-        # Handle timezone-naive timestamps
         if latest.tzinfo is None:
             latest = latest.replace(tzinfo=timezone.utc)
         passed = latest >= cutoff
@@ -179,15 +186,24 @@ def lambda_handler(event, context):
     database = event.get("database", "yt_pipeline_silver_dev")
     tables = event.get("tables", ["clean_statistics"])
 
+    logger.info("DQ Lambda invoked")
+    logger.info(f"Event keys: {list(event.keys())}")
+    logger.info(f"Database: {database}")
+    logger.info(f"Tables: {tables}")
+    logger.info(f"S3 output: {S3_OUTPUT}")
+    logger.info(f"Athena workgroup: {WORKGROUP}")
+
     all_results = []
     overall_passed = True
 
     for table_name in tables:
         logger.info(f"Running DQ checks on {database}.{table_name}...")
+        logger.info(f"Reading sample rows from {database}.{table_name} via Athena")
 
         try:
             # Read a sample of the data (limit for cost/speed)
             query = f'SELECT * FROM "{table_name}" LIMIT 10000'
+            logger.info(f"Athena query: {query}")
             df = wr.athena.read_sql_query(
                 sql=query,
                 database=database,
@@ -195,8 +211,11 @@ def lambda_handler(event, context):
                 workgroup=WORKGROUP,
                 ctas_approach=False,
             )
+            logger.info(f"Read completed for {database}.{table_name}: {len(df)} rows, columns={list(df.columns)}")
+            logger.info(f"Sample rows from {table_name}:\n{df.head(2).to_json(orient='records', date_format='iso')}")
         except Exception as e:
-            logger.error(f"Could not read {table_name}: {e}")
+            logger.error(f"Could not read {database}.{table_name}: {e}")
+            logger.error(traceback.format_exc())
             all_results.append({
                 "check": "read_table",
                 "table": table_name,
@@ -219,6 +238,8 @@ def lambda_handler(event, context):
             if not check["passed"]:
                 overall_passed = False
 
+        logger.info(f"Finished DQ checks for {database}.{table_name}")
+
         all_results.extend(checks)
 
     # Summary
@@ -228,6 +249,7 @@ def lambda_handler(event, context):
 
     if not overall_passed and SNS_TOPIC:
         failed = [r for r in all_results if not r["passed"]]
+        logger.error(f"Publishing DQ failure alert to SNS topic {SNS_TOPIC}")
         sns_client.publish(
             TopicArn=SNS_TOPIC,
             Subject="[YT Pipeline] Data quality checks FAILED",

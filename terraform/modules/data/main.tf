@@ -224,10 +224,41 @@ resource "aws_glue_catalog_table" "bronze_raw_statistics" {
       name = "comment_count"
       type = "bigint"
     }
+    columns {
+      name = "thumbnail_link"
+      type = "string"
+    }
+    columns {
+      name = "comments_disabled"
+      type = "boolean"
+    }
+    columns {
+      name = "ratings_disabled"
+      type = "boolean"
+    }
+    columns {
+      name = "video_error_or_removed"
+      type = "boolean"
+    }
+    columns {
+      name = "description"
+      type = "string"
+    }
+  }
+
+  partition_keys {
+    name = "region"
+    type = "string"
   }
 
   parameters = {
     "classification" = "csv"
+  }
+
+  lifecycle {
+    ignore_changes = [
+      parameters,
+    ]
   }
 }
 
@@ -246,19 +277,32 @@ resource "aws_glue_catalog_table" "bronze_reference_data" {
     ser_de_info {
       serialization_library = "org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe"
     }
-
     columns {
-      name = "category_id"
-      type = "int"
-    }
-    columns {
-      name = "category_name"
+      name = "kind"
       type = "string"
     }
+    columns {
+      name = "etag"
+      type = "string"
+    }
+    columns {
+      name = "items"
+      type = "array<struct<kind:string,etag:string,id:string,snippet:struct<channelId:string,title:string,assignable:boolean>>>"
+    }
+  }
+    partition_keys {
+    name = "region"
+    type = "string"
   }
 
   parameters = {
     "classification" = "json"
+  }
+
+  lifecycle {
+    ignore_changes = [
+      parameters,
+    ]
   }
 }
 
@@ -299,6 +343,14 @@ resource "aws_glue_catalog_table" "silver_clean_statistics" {
       type = "int"
     }
     columns {
+      name = "publish_time"
+      type = "string"
+    }
+    columns {
+      name = "tags"
+      type = "string"
+    }
+    columns {
       name = "views"
       type = "bigint"
     }
@@ -307,13 +359,68 @@ resource "aws_glue_catalog_table" "silver_clean_statistics" {
       type = "bigint"
     }
     columns {
+      name = "dislikes"
+      type = "bigint"
+    }
+    columns {
       name = "comment_count"
       type = "bigint"
     }
+    columns {
+      name = "thumbnail_link"
+      type = "string"
+  }
+  columns {
+    name = "comments_disabled"
+    type = "boolean"
+  }
+  columns{
+    name = "ratings_disabled"
+    type = "boolean"
+  }
+  columns {
+    name = "video_error_or_removed"
+    type = "boolean"
+  }
+  columns {
+    name = "description"
+    type = "string"
+  }
+  columns {
+    name = "trending_date_parsed"
+    type= "date"
+  }
+  columns {
+    name = "like_ratio"
+    type = "double"
+  }
+  columns {
+    name = "engagement_rate"
+    type = "double"
+  }
+  columns {
+    name = "_processed_at"
+    type = "timestamp"
+  }
+  columns {
+    name = "_job_name"
+    type = "string"
+  }
+  }
+
+  partition_keys {
+    name = "region"
+    type = "string"
   }
 
   parameters = {
     "classification" = "parquet"
+  }
+
+  lifecycle {
+    ignore_changes = [
+      parameters,
+    ]
   }
 }
 
@@ -333,18 +440,53 @@ resource "aws_glue_catalog_table" "silver_reference_data" {
       serialization_library = "org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe"
     }
 
-    columns {
-      name = "category_id"
-      type = "int"
-    }
-    columns {
-      name = "category_name"
-      type = "string"
-    }
+  columns {
+    name = "kind"
+    type = "string"
+  }
+  columns{
+    name = "etag"
+    type = "string"
+  }
+  columns {
+    name = "id"
+    type = "string"
+  }
+  columns {
+    name = "snippet_title"
+    type = "string"
+  }
+  columns {
+    name = "snippet_assignable"
+    type = "boolean"
+  }
+  columns {
+    name = "snippet_channelid"
+    type = "string"
+  }
+  columns {
+    name = "_ingestion_timestamp"
+    type = "string"
+  }
+  columns {
+    name = "_source_file"
+    type = "string"
+  }
+  }
+
+  partition_keys {
+    name = "region"
+    type = "string"
   }
 
   parameters = {
     "classification" = "parquet"
+  }
+
+  lifecycle {
+    ignore_changes = [
+      parameters,
+    ]
   }
 }
 
@@ -365,25 +507,62 @@ resource "aws_glue_catalog_table" "gold_category_analytics" {
     }
 
     columns {
-      name = "category_id"
-      type = "int"
-    }
-    columns {
       name = "category_name"
       type = "string"
     }
     columns {
-      name = "avg_views"
-      type = "double"
+      name = "category_id"
+      type = "bigint"
+    }
+    columns {
+      name = "trending_date_parsed"
+      type = "date"
+    }
+    columns {
+      name = "video_count"
+      type = "bigint"
     }
     columns {
       name = "total_views"
       type = "bigint"
     }
+    columns {
+      name = "total_likes"
+      type = "bigint"
+    }
+    columns {
+      name = "total_comments"
+      type = "bigint"
+    }
+    columns {
+      name = "avg_engagement_rate"
+      type = "double"
+    }
+    columns {
+      name = "unique_channels"
+      type = "bigint"
+    }
+    columns {
+      name = "view_share_pct"
+      type = "double"
+    }
+    columns {
+      name = "_aggregated_at"
+      type = "timestamp"
+    }
   }
 
+  partition_keys {
+    name = "region"
+    type = "string"
+  }
   parameters = {
     "classification" = "parquet"
+  }
+  lifecycle {
+    ignore_changes = [
+      parameters,
+    ]
   }
 }
 
@@ -408,21 +587,71 @@ resource "aws_glue_catalog_table" "gold_channel_analytics" {
       type = "string"
     }
     columns {
-      name = "avg_views"
-      type = "double"
+      name = "total_videos"
+      type = "bigint"
     }
     columns {
       name = "total_views"
       type = "bigint"
     }
     columns {
-      name = "video_count"
+      name = "total_likes"
+      type = "bigint"
+    }
+    columns {
+      name = "total_comments"
+      type = "bigint"
+    }
+    columns {
+      name = "avg_views_per_video"
+      type = "double"
+    }
+    columns {
+      name = "avg_engagement_rate"
+      type = "double"
+    }
+    columns {
+      name = "peak_views"
+      type = "bigint"
+    }
+    columns {
+      name = "times_trending"
+      type = "bigint"
+    }
+    columns {
+      name = "first_trending"
+      type = "date"
+    }
+    columns {
+      name = "last_trending"
+      type = "date"
+    }
+    columns {
+      name = "categories"
+      type = "array<string>"
+    }
+    columns {
+      name = "rank_in_region"
       type = "int"
     }
+    columns {
+      name = "_aggregated_at"
+      type = "timestamp"
+    }
+  }
+  partition_keys {
+    name = "region"
+    type = "string"
   }
 
   parameters = {
     "classification" = "parquet"
+  }
+
+  lifecycle {
+    ignore_changes = [
+      parameters,
+    ]
   }
 }
 
@@ -443,29 +672,71 @@ resource "aws_glue_catalog_table" "gold_trending_analytics" {
     }
 
     columns {
-      name = "video_id"
-      type = "string"
+      name = "trending_date_parsed"
+      type = "date"
     }
     columns {
-      name = "title"
-      type = "string"
-    }
-    columns {
-      name = "channel_title"
-      type = "string"
-    }
-    columns {
-      name = "views"
+      name = "total_videos"
       type = "bigint"
     }
     columns {
-      name = "trending_score"
+      name = "total_views"
+      type = "bigint"
+    }
+    columns {
+      name = "total_likes"
+      type = "bigint"
+    }
+    columns {
+      name = "total_dislikes"
+      type = "bigint"
+    }
+    columns {
+      name = "total_comments"
+      type = "bigint"
+    }
+    columns {
+      name = "avg_views_per_video"
       type = "double"
     }
+    columns {
+      name = "avg_like_ratio"
+      type = "double"
+    }
+    columns {
+      name = "avg_engagement_rate"
+      type = "double"
+    }
+    columns {
+      name = "max_views"
+      type = "bigint"
+    }
+    columns {
+      name = "unique_channels"
+      type = "bigint"
+    }
+    columns {
+      name = "unique_categories"
+      type = "bigint"
+    }
+    columns {
+      name = "_aggregated_at"
+      type = "timestamp"
+  }
+  }
+
+  partition_keys {
+    name = "region"
+    type = "string"
   }
 
   parameters = {
     "classification" = "parquet"
+  }
+  lifecycle {
+    ignore_changes = [
+      parameters,
+    ]
   }
 }
 
@@ -492,6 +763,154 @@ resource "aws_glue_catalog_table" "gold_trending_analytics" {
 # ────────────────────────────────────────────────────────────────────────────
 
 data "aws_caller_identity" "current" {}
+
+# ────────────────────────────────────────────────────────────────────────────
+# Glue Table Partitions
+# ────────────────────────────────────────────────────────────────────────────
+
+locals {
+  all_regions  = ["ca", "de", "fr", "gb", "in", "jp", "kr", "mx", "ru", "us"]
+  gold_regions = ["ca", "gb", "in", "us"]
+  bronze_bucket = "rid-yt-pipeline-bronze-${var.aws_region}-${var.environment_name}-v2"
+  silver_bucket = "rid-yt-pipeline-silver-${var.aws_region}-${var.environment_name}-v2"
+  gold_bucket   = "rid-yt-pipeline-gold-${var.aws_region}-${var.environment_name}-v2"
+  bronze_partition_sd = {
+    input_format  = "org.apache.hadoop.mapred.TextInputFormat"
+    output_format = "org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat"
+    serde         = "org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe"
+  }
+  parquet_partition_sd = {
+    input_format  = "org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat"
+    output_format = "org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat"
+    serde         = "org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe"
+  }
+}
+
+# ── Bronze — raw_statistics ──
+resource "aws_glue_partition" "bronze_raw_statistics" {
+  for_each = toset(local.all_regions)
+
+  database_name    = aws_glue_catalog_database.bronze.name
+  table_name       = aws_glue_catalog_table.bronze_raw_statistics.name
+  partition_values = [each.value]
+
+  storage_descriptor {
+    location      = "s3://${local.bronze_bucket}/youtube/raw_statistics/region=${each.value}/"
+    input_format  = local.bronze_partition_sd.input_format
+    output_format = local.bronze_partition_sd.output_format
+    ser_de_info {
+      serialization_library = local.bronze_partition_sd.serde
+    }
+  }
+}
+
+# ── Bronze — raw_statistics_reference_data ──
+resource "aws_glue_partition" "bronze_reference_data" {
+  for_each = toset(local.all_regions)
+
+  database_name    = aws_glue_catalog_database.bronze.name
+  table_name       = aws_glue_catalog_table.bronze_reference_data.name
+  partition_values = [each.value]
+
+  storage_descriptor {
+    location      = "s3://${local.bronze_bucket}/youtube/raw_statistics_reference_data/region=${each.value}/"
+    input_format  = local.bronze_partition_sd.input_format
+    output_format = local.bronze_partition_sd.output_format
+    ser_de_info {
+      serialization_library = local.bronze_partition_sd.serde
+    }
+  }
+}
+
+# ── Silver — clean_statistics ──
+resource "aws_glue_partition" "silver_clean_statistics" {
+  for_each = toset(local.all_regions)
+
+  database_name    = aws_glue_catalog_database.silver.name
+  table_name       = aws_glue_catalog_table.silver_clean_statistics.name
+  partition_values = [each.value]
+
+  storage_descriptor {
+    location      = "s3://${local.silver_bucket}/youtube/statistics/region=${each.value}/"
+    input_format  = local.parquet_partition_sd.input_format
+    output_format = local.parquet_partition_sd.output_format
+    ser_de_info {
+      serialization_library = local.parquet_partition_sd.serde
+    }
+  }
+}
+
+# ── Silver — clean_reference_data ──
+resource "aws_glue_partition" "silver_reference_data" {
+  for_each = toset(local.all_regions)
+
+  database_name    = aws_glue_catalog_database.silver.name
+  table_name       = aws_glue_catalog_table.silver_reference_data.name
+  partition_values = [each.value]
+
+  storage_descriptor {
+    location      = "s3://${local.silver_bucket}/youtube/reference_data/region=${each.value}/"
+    input_format  = local.parquet_partition_sd.input_format
+    output_format = local.parquet_partition_sd.output_format
+    ser_de_info {
+      serialization_library = local.parquet_partition_sd.serde
+    }
+  }
+}
+
+# ── Gold — category_analytics ──
+resource "aws_glue_partition" "gold_category_analytics" {
+  for_each = toset(local.gold_regions)
+
+  database_name    = aws_glue_catalog_database.gold.name
+  table_name       = aws_glue_catalog_table.gold_category_analytics.name
+  partition_values = [each.value]
+
+  storage_descriptor {
+    location      = "s3://${local.gold_bucket}/youtube/category_analytics/region=${each.value}/"
+    input_format  = local.parquet_partition_sd.input_format
+    output_format = local.parquet_partition_sd.output_format
+    ser_de_info {
+      serialization_library = local.parquet_partition_sd.serde
+    }
+  }
+}
+
+# ── Gold — channel_analytics ──
+resource "aws_glue_partition" "gold_channel_analytics" {
+  for_each = toset(local.gold_regions)
+
+  database_name    = aws_glue_catalog_database.gold.name
+  table_name       = aws_glue_catalog_table.gold_channel_analytics.name
+  partition_values = [each.value]
+
+  storage_descriptor {
+    location      = "s3://${local.gold_bucket}/youtube/channel_analytics/region=${each.value}/"
+    input_format  = local.parquet_partition_sd.input_format
+    output_format = local.parquet_partition_sd.output_format
+    ser_de_info {
+      serialization_library = local.parquet_partition_sd.serde
+    }
+  }
+}
+
+# ── Gold — trending_analytics ──
+resource "aws_glue_partition" "gold_trending_analytics" {
+  for_each = toset(local.gold_regions)
+
+  database_name    = aws_glue_catalog_database.gold.name
+  table_name       = aws_glue_catalog_table.gold_trending_analytics.name
+  partition_values = [each.value]
+
+  storage_descriptor {
+    location      = "s3://${local.gold_bucket}/youtube/trending_analytics/region=${each.value}/"
+    input_format  = local.parquet_partition_sd.input_format
+    output_format = local.parquet_partition_sd.output_format
+    ser_de_info {
+      serialization_library = local.parquet_partition_sd.serde
+    }
+  }
+}
 
 # ────────────────────────────────────────────────────────────────────────────
 # Data Outputs

@@ -87,13 +87,37 @@ def send_alert(subject: str, message: str):
 
 
 def lambda_handler(event, context):
-    """Process S3 event for new JSON reference files."""
+    """Process S3 event for new JSON reference files, or list & process all files when invoked by Step Functions."""
 
-    # Handle both direct S3 events and EventBridge-wrapped events
+    logger.info(f"Full event received: {json.dumps(event, default=str)[:2000]}")
+
     records = event.get("Records", [])
     if not records:
-        # Could be invoked directly by Step Functions
         records = [event] if "s3" in event else []
+
+    # If no S3 records, we're likely called from Step Functions directly.
+    # List all JSON files in the bronze reference data prefix and process them.
+    if not records:
+        logger.info("No S3 Records found — Step Functions invocation. Listing Bronze reference data files...")
+        bronze_bucket = os.environ.get("BRONZE_BUCKET", "")
+        if not bronze_bucket:
+            bronze_bucket = SILVER_BUCKET.replace("silver", "bronze")
+        prefix = "youtube/raw_statistics_reference_data/"
+        try:
+            paginator = s3_client.get_paginator("list_objects_v2")
+            for page in paginator.paginate(Bucket=bronze_bucket, Prefix=prefix):
+                for obj in page.get("Contents", []):
+                    key = obj["Key"]
+                    if key.endswith(".json"):
+                        records.append({
+                            "s3": {
+                                "bucket": {"name": bronze_bucket},
+                                "object": {"key": key},
+                            }
+                        })
+            logger.info(f"Found {len(records)} JSON files in s3://{bronze_bucket}/{prefix}")
+        except Exception as e:
+            logger.error(f"Failed to list Bronze reference data: {e}", exc_info=True)
 
     processed = []
     errors = []

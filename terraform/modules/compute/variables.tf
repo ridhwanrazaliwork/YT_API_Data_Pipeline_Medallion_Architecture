@@ -31,7 +31,7 @@ variable "sg_quality_id" {
 variable "lambda_timeout_seconds" {
   description = "Lambda function timeout"
   type        = number
-  default     = 240
+  default     = 600
 }
 
 variable "lambda_memory_mb" {

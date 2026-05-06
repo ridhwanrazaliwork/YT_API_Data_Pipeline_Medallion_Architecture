@@ -561,13 +561,16 @@ resource "aws_lambda_function" "ingestion" {
   tags = {
     Name = "${var.environment_name}-ingestion"
   }
-
-  depends_on = [aws_iam_role_policy_attachment.lambda_vpc_execution]
 }
 
 ## Lambda Function: JSON to Parquet Transform
 # Converts JSON data from Bronze bucket to Parquet format and stores in Silver bucket.
 # Triggered automatically when new files are uploaded to Bronze bucket.
+#
+# NOTE: Cost-saving decision — Lambda runs outside VPC (no NAT Gateway).
+# This avoids ~$35/month NAT Gateway costs for dev.
+# For production, attach to a private subnet + NAT Gateway or use VPC Endpoints
+# to restrict network access for security.
 resource "aws_lambda_function" "transform" {
   function_name = "${var.environment_name}-yt-transform"
   role          = aws_iam_role.lambda_execution.arn
@@ -583,11 +586,6 @@ resource "aws_lambda_function" "transform" {
     "arn:aws:lambda:${var.aws_region}:336392948345:layer:AWSSDKPandas-Python311:28"
   ]
 
-  vpc_config {
-    subnet_ids         = [var.public_subnet_id]
-    security_group_ids = [var.sg_ingestion_id]
-  }
-
   environment {
     variables = {
       GLUE_DB_SILVER          = "yt_pipeline_silver_${var.environment_name}-v2"
@@ -602,13 +600,16 @@ resource "aws_lambda_function" "transform" {
   tags = {
     Name = "${var.environment_name}-transform"
   }
-
-  depends_on = [aws_iam_role_policy_attachment.lambda_vpc_execution]
 }
 
 ## Lambda Function: Data Quality Check
 # Validates data in Silver bucket using Athena queries.
 # Publishes alerts if data quality issues are detected.
+#
+# NOTE: Cost-saving decision — Lambda runs outside VPC (no NAT Gateway).
+# This avoids ~$35/month NAT Gateway costs for dev.
+# For production, attach to a private subnet + NAT Gateway or use VPC Endpoints
+# to restrict network access for security.
 resource "aws_lambda_function" "quality" {
   function_name = "${var.environment_name}-yt-quality"
   role          = aws_iam_role.lambda_execution.arn
@@ -623,11 +624,6 @@ resource "aws_lambda_function" "quality" {
   layers = [
     "arn:aws:lambda:${var.aws_region}:336392948345:layer:AWSSDKPandas-Python311:28"
   ]
-
-  vpc_config {
-    subnet_ids         = [var.public_subnet_id]
-    security_group_ids = [var.sg_quality_id]
-  }
 
   environment {
     variables = {
@@ -644,8 +640,6 @@ resource "aws_lambda_function" "quality" {
   tags = {
     Name = "${var.environment_name}-quality"
   }
-
-  depends_on = [aws_iam_role_policy_attachment.lambda_vpc_execution]
 }
 
 # ────────────────────────────────────────────────────────────────────────────
@@ -675,10 +669,7 @@ locals {
     timeout       = var.lambda_timeout_seconds
     memory_size   = var.lambda_memory_mb
     runtime       = "python3.11"
-    vpc_config = {
-      subnet_ids         = [var.public_subnet_id]
-      security_group_ids = [var.sg_ingestion_id]
-    }
+    vpc_config    = null
   }
 
   quality_lambda_config = {
@@ -687,10 +678,7 @@ locals {
     timeout       = var.lambda_timeout_seconds
     memory_size   = var.lambda_memory_mb
     runtime       = "python3.11"
-    vpc_config = {
-      subnet_ids         = [var.public_subnet_id]
-      security_group_ids = [var.sg_quality_id]
-    }
+    vpc_config    = null
   }
 
   transform_lambda_config = {
@@ -699,9 +687,6 @@ locals {
     timeout       = var.lambda_timeout_seconds
     memory_size   = var.lambda_memory_mb
     runtime       = "python3.11"
-    vpc_config = {
-      subnet_ids         = [var.public_subnet_id]
-      security_group_ids = [var.sg_ingestion_id]
-    }
+    vpc_config    = null
   }
 }

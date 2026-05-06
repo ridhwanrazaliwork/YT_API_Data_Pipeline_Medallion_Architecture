@@ -59,6 +59,7 @@ logger = glueContext.get_logger()
 # ── Config ───────────────────────────────────────────────────────────────────
 BRONZE_DB = args["bronze_database"]
 BRONZE_TABLE = args["bronze_table"]
+BRONZE_BUCKET = args["silver_bucket"].replace("silver", "bronze")
 SILVER_BUCKET = args["silver_bucket"]
 SILVER_DB = args["silver_database"]
 SILVER_TABLE = args["silver_table"]
@@ -69,16 +70,22 @@ logger.info(f"Silver: {SILVER_DB}.{SILVER_TABLE} → {SILVER_PATH}")
 
 
 # ── Step 1: Read from Bronze ────────────────────────────────────────────────
-logger.info("Reading from Bronze catalog...")
+logger.info("Reading from Bronze S3 with recurse=True...")
 
-# Predicate pushdown — include both upper and lowercase to handle either partition format
-predicate = "region in ('ca','gb','us', 'in')"
+bronze_path = f"s3://{BRONZE_BUCKET}/youtube/raw_statistics/"
+logger.info(f"Bronze path: {bronze_path}")
 
-datasource = glueContext.create_dynamic_frame.from_catalog(
-    database=BRONZE_DB,
-    table_name=BRONZE_TABLE,
+# Read JSON files recursively, including date= and hour= subdirectories
+# (Ingestion Lambda writes to region=xx/date=yyyy-mm-dd/hour=hh/file.json)
+datasource = glueContext.create_dynamic_frame.from_options(
+    connection_type="s3",
+    connection_options={
+        "paths": [bronze_path],
+        "recurse": True,
+        "groupFiles": "inPartition",
+    },
+    format="json",
     transformation_ctx="datasource",
-    push_down_predicate=predicate,
 )
 
 df = datasource.toDF()
@@ -90,11 +97,45 @@ if initial_count == 0:
 else:
     # ── Step 2: Schema Enforcement ──────────────────────────────────────────
     logger.info("Enforcing schema and casting types...")
+    logger.info(f"Read schema: {df.schema}")
+    logger.info(f"Sample columns: {list(df.columns)}")
 
-    # Handle both Kaggle CSV format and YouTube API JSON format
     columns = set(df.columns)
 
-    if "snippet.title" in columns or "snippet__title" in columns:
+    # Detect raw YouTube API JSON response (items is a nested array)
+    if "items" in columns and "_pipeline_metadata" in columns:
+        logger.info("Detected raw YouTube API JSON — exploding items array and flattening...")
+
+        df = df.withColumn("region", F.lower(F.col("_pipeline_metadata.region")))
+
+        df = df.select(F.explode("items").alias("v"), "region")
+
+        # Handle tags: YouTube API returns array, convert to comma-separated string
+        df = df.withColumn("tags_str",
+            F.when(F.col("v.snippet.tags").isNotNull(),
+                F.concat_ws(",", F.col("v.snippet.tags")))
+            .otherwise(F.lit(None)))
+
+        df = df.select(
+            F.col("v.id").alias("video_id"),
+            F.lit(datetime.utcnow().strftime("%y.%d.%m")).alias("trending_date"),
+            F.col("v.snippet.title").alias("title"),
+            F.col("v.snippet.channelTitle").alias("channel_title"),
+            F.col("v.snippet.categoryId").cast(LongType()).alias("category_id"),
+            F.col("v.snippet.publishedAt").alias("publish_time"),
+            F.col("tags_str").alias("tags"),
+            F.col("v.statistics.viewCount").cast(LongType()).alias("views"),
+            F.col("v.statistics.likeCount").cast(LongType()).alias("likes"),
+            F.lit(None).cast(LongType()).alias("dislikes"),
+            F.col("v.statistics.commentCount").cast(LongType()).alias("comment_count"),
+            F.col("v.snippet.thumbnails.default.url").alias("thumbnail_link"),
+            F.lit(False).alias("comments_disabled"),
+            F.lit(False).alias("ratings_disabled"),
+            F.lit(False).alias("video_error_or_removed"),
+            F.col("v.snippet.description").alias("description"),
+            F.col("region"),
+        )
+    elif "snippet.title" in columns or "snippet__title" in columns:
         # YouTube API format — flatten nested structure
         logger.info("Detected YouTube API format — flattening...")
         df = df.select(

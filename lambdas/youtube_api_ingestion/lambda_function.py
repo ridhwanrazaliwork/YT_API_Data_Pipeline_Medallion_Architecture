@@ -138,7 +138,7 @@ def lambda_handler(event, context):
     results = {"success": [], "failed": []}
 
     for region in REGIONS:
-        region = region.strip()
+        region = region.strip().lower()
         logger.info(f"Processing region: {region}")
 
         # ── Fetch trending videos ────────────────────────────────────────

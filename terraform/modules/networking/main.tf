@@ -220,6 +220,14 @@ resource "aws_security_group" "quality" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  egress {
+  description = "HTTPS to AWS services (Athena, S3, Glue)"
+  from_port   = 443
+  to_port     = 443
+  protocol    = "tcp"
+  cidr_blocks = ["0.0.0.0/0"]
+}
+
   tags = {
     Name = "${var.environment_name}-sg-quality"
   }
