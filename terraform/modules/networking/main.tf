@@ -95,7 +95,7 @@ resource "aws_vpc" "main" {
   tags = {
     Name = "${var.environment_name}-vpc"
   }
-    lifecycle {
+  lifecycle {
     ignore_changes = [tags_all]
   }
 }
@@ -106,7 +106,7 @@ resource "aws_internet_gateway" "main" {
   tags = {
     Name = "${var.environment_name}-igw"
   }
-    lifecycle {
+  lifecycle {
     ignore_changes = [tags_all]
   }
 }
@@ -120,7 +120,7 @@ resource "aws_subnet" "public" {
   tags = {
     Name = "${var.environment_name}-public-subnet"
   }
-    lifecycle {
+  lifecycle {
     ignore_changes = [tags_all]
   }
 }
@@ -135,14 +135,14 @@ resource "aws_route_table" "public" {
   vpc_id = aws_vpc.main.id
 
   route {
-    cidr_block      = "0.0.0.0/0"
-    gateway_id      = aws_internet_gateway.main.id
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.main.id
   }
 
   tags = {
     Name = "${var.environment_name}-public-rt"
   }
-    lifecycle {
+  lifecycle {
     ignore_changes = [tags_all]
   }
 }
@@ -189,7 +189,7 @@ resource "aws_security_group" "ingestion" {
   tags = {
     Name = "${var.environment_name}-sg-ingestion"
   }
-    lifecycle {
+  lifecycle {
     ignore_changes = [tags_all]
   }
 }
@@ -221,12 +221,12 @@ resource "aws_security_group" "quality" {
   }
 
   egress {
-  description = "HTTPS to AWS services (Athena, S3, Glue)"
-  from_port   = 443
-  to_port     = 443
-  protocol    = "tcp"
-  cidr_blocks = ["0.0.0.0/0"]
-}
+    description = "HTTPS to AWS services (Athena, S3, Glue)"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 
   tags = {
     Name = "${var.environment_name}-sg-quality"

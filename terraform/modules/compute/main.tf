@@ -321,12 +321,12 @@ resource "aws_glue_security_configuration" "glue_security" {
 # Uses FLEX execution class for cost optimization.
 # Continuous logging to CloudWatch is enabled for monitoring and debugging.
 resource "aws_glue_job" "bronze_to_silver" {
-  name                 = "${var.environment_name}-yt-data-pipeline-bronze-to-silver"
-  role_arn             = aws_iam_role.glue_execution.arn
-  execution_class      = "FLEX"
-  worker_type          = "G.1X"
-  number_of_workers    = 2
-  glue_version         = "4.0"
+  name                   = "${var.environment_name}-yt-data-pipeline-bronze-to-silver"
+  role_arn               = aws_iam_role.glue_execution.arn
+  execution_class        = "FLEX"
+  worker_type            = "G.1X"
+  number_of_workers      = 2
+  glue_version           = "4.0"
   security_configuration = aws_glue_security_configuration.glue_security.name
 
   command {
@@ -336,18 +336,18 @@ resource "aws_glue_job" "bronze_to_silver" {
   }
 
   default_arguments = {
-    "--job-bookmark-option"            = "job-bookmark-enable"
-    "--enable-metrics"                 = "true"
-    "--enable-glue-datacatalog"        = "true"
-    "--conf"                           = "spark.eventLog.rolling.enabled=true"
+    "--job-bookmark-option"              = "job-bookmark-enable"
+    "--enable-metrics"                   = "true"
+    "--enable-glue-datacatalog"          = "true"
+    "--conf"                             = "spark.eventLog.rolling.enabled=true"
     "--enable-continuous-cloudwatch-log" = "true"
-    "--continuous-log-logGroup"        = aws_cloudwatch_log_group.glue_bronze_to_silver.name
-    "--continuous-log-logStreamPrefix" = "bronze-to-silver"
-    "--bronze_database"                = "yt_pipeline_bronze_${var.environment_name}-v2"
-    "--bronze_table"                   = "raw_statistics"
-    "--silver_bucket"                  = "rid-yt-pipeline-silver-${var.aws_region}-${var.environment_name}-v2"
-    "--silver_database"                = "yt_pipeline_silver_${var.environment_name}-v2"
-    "--silver_table"                   = "clean_statistics"
+    "--continuous-log-logGroup"          = aws_cloudwatch_log_group.glue_bronze_to_silver.name
+    "--continuous-log-logStreamPrefix"   = "bronze-to-silver"
+    "--bronze_database"                  = "yt_pipeline_bronze_${var.environment_name}-v2"
+    "--bronze_table"                     = "raw_statistics"
+    "--silver_bucket"                    = "rid-yt-pipeline-silver-${var.aws_region}-${var.environment_name}-v2"
+    "--silver_database"                  = "yt_pipeline_silver_${var.environment_name}-v2"
+    "--silver_table"                     = "clean_statistics"
   }
 
   max_retries = 0
@@ -366,12 +366,12 @@ resource "aws_glue_job" "bronze_to_silver" {
 # Uses FLEX execution class for cost optimization.
 # Continuous logging to CloudWatch is enabled for monitoring and debugging.
 resource "aws_glue_job" "silver_to_gold" {
-  name                 = "${var.environment_name}-yt-data-pipeline-silver-to-gold"
-  role_arn             = aws_iam_role.glue_execution.arn
-  execution_class      = "FLEX"
-  worker_type          = "G.1X"
-  number_of_workers    = 2
-  glue_version         = "4.0"
+  name                   = "${var.environment_name}-yt-data-pipeline-silver-to-gold"
+  role_arn               = aws_iam_role.glue_execution.arn
+  execution_class        = "FLEX"
+  worker_type            = "G.1X"
+  number_of_workers      = 2
+  glue_version           = "4.0"
   security_configuration = aws_glue_security_configuration.glue_security.name
 
   command {
@@ -381,16 +381,16 @@ resource "aws_glue_job" "silver_to_gold" {
   }
 
   default_arguments = {
-    "--job-bookmark-option"            = "job-bookmark-enable"
-    "--enable-metrics"                 = "true"
-    "--enable-glue-datacatalog"        = "true"
-    "--conf"                           = "spark.eventLog.rolling.enabled=true"
+    "--job-bookmark-option"              = "job-bookmark-enable"
+    "--enable-metrics"                   = "true"
+    "--enable-glue-datacatalog"          = "true"
+    "--conf"                             = "spark.eventLog.rolling.enabled=true"
     "--enable-continuous-cloudwatch-log" = "true"
-    "--continuous-log-logGroup"        = aws_cloudwatch_log_group.glue_silver_to_gold.name
-    "--continuous-log-logStreamPrefix" = "silver-to-gold"
-    "--gold_bucket"                    = "rid-yt-pipeline-gold-${var.aws_region}-${var.environment_name}-v2"
-    "--gold_database"                  = "yt_pipeline_gold_${var.environment_name}-v2"
-    "--silver_database"                = "yt_pipeline_silver_${var.environment_name}-v2"
+    "--continuous-log-logGroup"          = aws_cloudwatch_log_group.glue_silver_to_gold.name
+    "--continuous-log-logStreamPrefix"   = "silver-to-gold"
+    "--gold_bucket"                      = "rid-yt-pipeline-gold-${var.aws_region}-${var.environment_name}-v2"
+    "--gold_database"                    = "yt_pipeline_gold_${var.environment_name}-v2"
+    "--silver_database"                  = "yt_pipeline_silver_${var.environment_name}-v2"
   }
 
   max_retries = 0
@@ -447,8 +447,8 @@ resource "aws_iam_role_policy" "stepfunction_execution_policy" {
     Version = "2012-10-17"
     Statement = [
       {
-        Effect = "Allow"
-        Action = "lambda:InvokeFunction"
+        Effect   = "Allow"
+        Action   = "lambda:InvokeFunction"
         Resource = "arn:aws:lambda:${var.aws_region}:${data.aws_caller_identity.current.account_id}:function:${var.environment_name}-yt-*"
       },
       {
@@ -462,8 +462,8 @@ resource "aws_iam_role_policy" "stepfunction_execution_policy" {
         Resource = "*"
       },
       {
-        Effect = "Allow"
-        Action = "sns:Publish"
+        Effect   = "Allow"
+        Action   = "sns:Publish"
         Resource = "arn:aws:sns:${var.aws_region}:${data.aws_caller_identity.current.account_id}:yt-data-pipeline-alerts-${var.environment_name}-v2"
       }
     ]
@@ -478,8 +478,8 @@ resource "aws_iam_role_policy" "stepfunction_execution_policy" {
 # This resource defines the workflow for the entire data pipeline using AWS Step Functions.
 # It references the state machine definition from a JSON template, and uses the Step Functions execution role.
 resource "aws_sfn_state_machine" "pipeline_orchestration" {
-  name       = "${var.environment_name}-yt-pipeline-orchestration"
-  role_arn   = aws_iam_role.stepfunction_execution.arn
+  name     = "${var.environment_name}-yt-pipeline-orchestration"
+  role_arn = aws_iam_role.stepfunction_execution.arn
   definition = templatefile("${path.module}/../../../stepfunctions/pipeline_orchestration.json", {
     environment = var.environment_name
     account_id  = data.aws_caller_identity.current.account_id
@@ -549,12 +549,12 @@ resource "aws_lambda_function" "ingestion" {
 
   environment {
     variables = {
-      S3_BUCKET_BRONZE        = "rid-yt-pipeline-bronze-${var.aws_region}-${var.environment_name}-v2"
-      SNS_ALERT_TOPIC_ARN     = aws_sns_topic.pipeline_alerts.arn
-      YOUTUBE_API_KEY_SECRET  = aws_secretsmanager_secret.youtube_api_key.arn
+      S3_BUCKET_BRONZE       = "rid-yt-pipeline-bronze-${var.aws_region}-${var.environment_name}-v2"
+      SNS_ALERT_TOPIC_ARN    = aws_sns_topic.pipeline_alerts.arn
+      YOUTUBE_API_KEY_SECRET = aws_secretsmanager_secret.youtube_api_key.arn
     }
   }
-    ephemeral_storage {
+  ephemeral_storage {
     size = var.lambda_ephemeral_mb
   }
 
@@ -588,13 +588,13 @@ resource "aws_lambda_function" "transform" {
 
   environment {
     variables = {
-      GLUE_DB_SILVER          = "yt_pipeline_silver_${var.environment_name}-v2"
-      GLUE_TABLE_REFERENCE    = "clean_reference_data"
-      S3_BUCKET_SILVER        = "rid-yt-pipeline-silver-${var.aws_region}-${var.environment_name}-v2"
-      SNS_ALERT_TOPIC_ARN     = aws_sns_topic.pipeline_alerts.arn
+      GLUE_DB_SILVER       = "yt_pipeline_silver_${var.environment_name}-v2"
+      GLUE_TABLE_REFERENCE = "clean_reference_data"
+      S3_BUCKET_SILVER     = "rid-yt-pipeline-silver-${var.aws_region}-${var.environment_name}-v2"
+      SNS_ALERT_TOPIC_ARN  = aws_sns_topic.pipeline_alerts.arn
     }
   }
-    ephemeral_storage {
+  ephemeral_storage {
     size = var.lambda_ephemeral_mb
   }
   tags = {
@@ -627,14 +627,14 @@ resource "aws_lambda_function" "quality" {
 
   environment {
     variables = {
-      ATHENA_WORKGROUP        = "primary"
-      DQ_MAX_NULL_PERCENT     = "5"
-      DQ_MIN_ROW_COUNT        = "10"
-      S3_OUTPUT               = "s3://rid-yt-data-pipeline-glue-athena-query-result-v2/athena-results/"
-      SNS_ALERT_TOPIC_ARN     = aws_sns_topic.pipeline_alerts.arn
+      ATHENA_WORKGROUP    = "primary"
+      DQ_MAX_NULL_PERCENT = "5"
+      DQ_MIN_ROW_COUNT    = "10"
+      S3_OUTPUT           = "s3://rid-yt-data-pipeline-glue-athena-query-result-v2/athena-results/"
+      SNS_ALERT_TOPIC_ARN = aws_sns_topic.pipeline_alerts.arn
     }
   }
-    ephemeral_storage {
+  ephemeral_storage {
     size = var.lambda_ephemeral_mb
   }
   tags = {

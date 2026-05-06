@@ -12,6 +12,9 @@ jobs:
   validate:
     name: Validate Terraform
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
 
     steps:
       - name: Checkout code
@@ -23,6 +26,7 @@ jobs:
           terraform_version: '~> 1.5.0'
 
       - name: Terraform fmt check
+        id: fmt_check
         working-directory: terraform
         run: |
           echo "Checking Terraform formatting..."
@@ -34,12 +38,14 @@ jobs:
           echo "✅ All files are properly formatted"
 
       - name: Terraform init (dev)
+        id: init_dev
         working-directory: terraform/environments/dev
         run: |
           echo "Initializing dev environment..."
           terraform init -backend=false
           
       - name: Terraform validate (dev)
+        id: validate_dev
         working-directory: terraform/environments/dev
         run: |
           echo "Validating dev environment..."
@@ -52,12 +58,14 @@ jobs:
           fi
 
       - name: Terraform init (prod)
+        id: init_prod
         working-directory: terraform/environments/prod
         run: |
           echo "Initializing prod environment..."
           terraform init -backend=false
 
       - name: Terraform validate (prod)
+        id: validate_prod
         working-directory: terraform/environments/prod
         run: |
           echo "Validating prod environment..."
@@ -80,6 +88,7 @@ jobs:
         continue-on-error: true
 
       - name: Check Lambda code for syntax errors
+        id: lambda_check
         run: |
           echo "Checking Lambda function syntax..."
           python3 -m py_compile lambdas/youtube_api_ingestion/lambda_function.py
@@ -88,6 +97,7 @@ jobs:
           echo "✅ All Lambda functions have valid Python syntax"
 
       - name: Check Glue scripts for syntax errors
+        id: glue_check
         run: |
           echo "Checking Glue job scripts syntax..."
           python3 -m py_compile glue_jobs/bronze_to_silver_statistics.py
@@ -100,15 +110,21 @@ jobs:
         with:
           script: |
             const fs = require('fs');
+            const outcomes = {
+              fmt: '${{ steps.fmt_check.outcome }}',
+              validateDev: '${{ steps.validate_dev.outcome }}',
+              validateProd: '${{ steps.validate_prod.outcome }}',
+              lambda: '${{ steps.lambda_check.outcome }}',
+              glue: '${{ steps.glue_check.outcome }}'
+            };
+            const icon = (s) => s === 'success' ? '✅' : '❌';
             let comment = `## Terraform Validation Results\n\n`;
+            comment += `### ${icon(outcomes.fmt)} Terraform Format Check\n${outcomes.fmt === 'success' ? 'All files are properly formatted.' : 'Some files are not formatted — run: terraform fmt -recursive'}\n\n`;
+            comment += `### ${icon(outcomes.validateDev)} Terraform Validation (Dev)\n${outcomes.validateDev === 'success' ? 'Dev environment is valid.' : 'Dev validation failed.'}\n\n`;
+            comment += `### ${icon(outcomes.validateProd)} Terraform Validation (Prod)\n${outcomes.validateProd === 'success' ? 'Prod environment is valid.' : 'Prod validation failed.'}\n\n`;
+            comment += `### ${icon(outcomes.lambda)} Lambda Syntax Check\n${outcomes.lambda === 'success' ? 'All Lambda functions have valid Python syntax.' : 'Lambda syntax check failed.'}\n\n`;
+            comment += `### ${icon(outcomes.glue)} Glue Scripts Syntax Check\n${outcomes.glue === 'success' ? 'All Glue scripts have valid Python syntax.' : 'Glue script syntax check failed.'}\n\n`;
             
-            comment += `### ✅ Terraform Format Check\nAll files are properly formatted.\n\n`;
-            comment += `### ✅ Terraform Validation (Dev)\nDev environment is valid.\n\n`;
-            comment += `### ✅ Terraform Validation (Prod)\nProd environment is valid.\n\n`;
-            comment += `### ✅ Lambda Syntax Check\nAll Lambda functions have valid Python syntax.\n\n`;
-            comment += `### ✅ Glue Scripts Syntax Check\nAll Glue scripts have valid Python syntax.\n\n`;
-            
-            // Try to read plan summary if available
             if (fs.existsSync('/tmp/tfplan_dev')) {
               comment += `### Terraform Plan (Dev)\n\`\`\`\nUse 'terraform plan' locally to review full changes\n\`\`\`\n`;
             }
