@@ -10,6 +10,8 @@ This project is built upon the original work by [Darshil Parmar](https://github.
 
 ![Architecture Diagram](image.png)
 
+![Step Function Pipeline](stepfunction.png)
+
 ---
 
 ## Table of Contents
